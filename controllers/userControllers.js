@@ -7,6 +7,7 @@ import AsyncHandler from "express-async-handler";
 import verificationToken from "../models/userVerificationModel.js";
 import { generateOtp } from "../utils/getOtp.js";
 import User from "../models/userModel.js";
+import generateToken from "../utils/jsonwebtoken.js";
 
 export const regsiterUser = AsyncHandler(async (req, res) => {
   const { email, name, password, userType } = req.body;
@@ -55,8 +56,57 @@ export const regsiterUser = AsyncHandler(async (req, res) => {
     await verificationtoken.save();
     await newUser.save();
 
-    //send email
+    // sendEmail({})
 
-    res.json("email already in use");
+    res.json(newUser);
+  }
+});
+
+//USER LOGIN
+
+//@DEC  => users can login
+//@METHOD => post
+//@PATH => /login
+
+export const userLogin = AsyncHandler(async (req, res) => {
+  const { email, password } = rew.body;
+
+  const user = await User.findOne({ email });
+
+  if (user && (await user.matchPassword(password))) {
+    if (user.userType === "employee") {
+      res.json({
+        _id: user._id,
+        name: user.username,
+        email: user.email,
+        userType: user.userType,
+        employeeData: user.employeeData,
+        isBlocked: user.isBloked,
+        token: generateToken(user._id),
+      });
+    } else if (user.userType === "employer") {
+      res.json({
+        _id: user._id,
+        name: user.username,
+        email: user.email,
+        userType: user.userType,
+        employerData: user.employerData,
+        isBlocked: user.isBloked,
+        token: generateToken(user._id),
+      });
+    } else if (user.userType === "admin") {
+      res.json({
+        _id: user._id,
+        name: user.username,
+        email: user.email,
+        userType: user.userType,
+        employerData: user.employerData,
+        isBlocked: user.isBloked,
+        token: generateToken(user._id),
+      });
+    }
+  } else {
+    res.status(404);
+    throw new Error("Email or password is incorrect");
   }
 });
