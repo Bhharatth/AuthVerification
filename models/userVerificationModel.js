@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const verifyTokenSchema = new mongoose.Schema(
+const verificationTokenSchema = new mongoose.Schema(
   {
     owner: {
       type: String,
@@ -31,5 +31,5 @@ verifyTokenSchema.pre("save", async (next) => {
   this.token = await bcrypt.hash(this.token, salt);
 });
 
-const verifyToken = mongoose.model("User", userSchema);
-export default verifyToken;
+const verificationToken = mongoose.model("verificationToken", verificationTokenSchema);
+export default verificationToken;
