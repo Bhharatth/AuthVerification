@@ -8,6 +8,9 @@ import verificationToken from "../models/userVerificationModel.js";
 import { generateOtp } from "../utils/getOtp.js";
 import User from "../models/userModel.js";
 import generateToken from "../utils/jsonwebtoken.js";
+import { isValidObjectId } from "mongoose";
+import Employee from "../models/employeeModel.js";
+import Employer from "../models/employerModel.js";
 
 export const regsiterUser = AsyncHandler(async (req, res) => {
   const { email, name, password, userType } = req.body;
@@ -108,5 +111,80 @@ export const userLogin = AsyncHandler(async (req, res) => {
   } else {
     res.status(404);
     throw new Error("Email or password is incorrect");
+  }
+});
+
+//FERIFY EMAIL
+
+//@DEC  =>
+//@METHOD => post
+//@PATH => / verify-email
+
+export const verifyEmail = AsyncHandler(async (req, res) => {
+  const { userId, otp, userType } = req.body;
+
+  if (!userId || !otp.trim()) {
+    throw new Error("invalid Request");
+  }
+  if (isValidObjectId(userId)) {
+    throw new Error("invalid Request");
+  } else {
+    const user = await User.findbyId(userId);
+    if (!user) {
+      throw new Error("This account is verified or not fonud");
+    }
+    if (user.emailVerified) {
+      throw new Error("Email alredy verified");
+    }
+    const token = await verificationToken.findById({ owner: userId });
+    if (!token) {
+      throw new Error("No token found");
+    }
+    const isMatch = await otp.matchPassword(token);
+
+    if (!isMatch) {
+      throw new Error("invalid otp");
+    } else {
+      user.emailVerified = true;
+      await verificationToken.findById({ owner: userId });
+
+      if (user.userType === "employee") {
+        const userData = new Employee({
+          owner: user._id,
+        });
+
+        user.employeeData = userData._id;
+        userData.save();
+        user.save();
+
+        res.json({
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          userType: user.userType,
+          employeeData: user.employeeData,
+          emailVerified: user.emailVerified,
+          token: generateToken(user._id),
+        });
+      }
+      if (user.userType === "employer") {
+        const userData = new Employer({
+          owner: user._id,
+        });
+        user.employerData = userData._id;
+        userData.save();
+        user.save();
+
+        res.json({
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          userType: user.userType,
+          employerData: user.employerData,
+          emailVerified: user.emailVerified,
+          token: generateToken(user._id),
+        });
+      }
+    }
   }
 });
