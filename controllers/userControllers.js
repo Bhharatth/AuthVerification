@@ -188,3 +188,100 @@ export const verifyEmail = AsyncHandler(async (req, res) => {
     }
   }
 });
+
+////@DEC  =>CHANGE
+//@METHOD => post
+//@PATH => /resetpassword/:userId
+
+export const changePassword = AsyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { oldPassword, newPassword } = req.body;
+
+  try {
+    const user = User.findById(userId);
+    if (user && (await user.matchPasswords(oldPassword))) {
+      user.newPassword = newPassword;
+      await user.save();
+      res.status(200).json({ message: "Password changed SuccessFully" });
+    } else {
+      res.status(401).json({ message: "Invalid Credentails" });
+    }
+  } catch (error) {
+    res.status(500).json({
+      message: "Something went wrong",
+    });
+  }
+});
+
+////@DEC  =>FORGOT PASSWORD
+//@METHOD => post
+//@PATH =>
+
+export const forgotPassword = AsyncHandler(async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({
+      $and: [{ email: email }, { emailVerified: true }],
+    });
+
+    if (user) {
+      //deleting exsting token
+      const token = await verificationToken.findByIdAndDelete({
+        owner: user._id + "*",
+      });
+
+      const OTP = generateOtp();
+      //generate new token
+      const Token = new verificationToken({
+        owner: user._id + "*",
+        token: OTP,
+      });
+
+      sendMail({
+        to: user.email,
+        from: "admin@gmial.com",
+        subject: `RESET PASSWORD`,
+        html: `<div>
+    <h1>RESET YOUR PASSWORD</h1>
+    <p>Do not share your OTP with any one</p>
+    <h3>OTP: <strong>${OTP}</strong></h3> 
+    </div>`,
+      });
+
+      await user.save();
+      await Token.save();
+      res.status(200).json("Password reset success");
+    } else {
+      res.json("No user found");
+    }
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+//@DEC  =>FORGOT PASSWORD AND VERIFY
+//@METHOD =>
+//@PATH =>
+
+export const forgotPasswordAndVerify = AsyncHandler(async (req, res) => {
+  const { email, otp, password } = req.body;
+
+  const user = await User.findOne({ email: email });
+  const id = user._id + "*";
+
+  const token = await verificationToken.findOne({ owner: id });
+  if (!token) {
+    throw new Error("no token");
+  }
+  const isMatch = await token.matchPasswords(otp);
+
+  if (user && isMatch) {
+    user.password = password;
+    await user.save();
+    await verificationToken.findOneAndDelete({ owner: id });//
+    res.json("success");
+  } else {
+    await verificationToken.findOneAndDelete({ owner: id });
+    res.json("failed operation");
+  }
+});
