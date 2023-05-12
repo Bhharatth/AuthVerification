@@ -23,7 +23,7 @@ const jobSchema = new mongoose.Schema({
     enum: ["easy", "intermediate", "advanced"],
     default: "easy",
   },
-  budject: {
+  budget: {
     min: 5,
     max: 100000,
   },

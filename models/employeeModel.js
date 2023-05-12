@@ -81,7 +81,7 @@ const employeeSchema = new mongoose.Schema({
   availableForWithDraw: {
    
   },
-  savedJobd: {
+  savedJobs: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Job",
   },
