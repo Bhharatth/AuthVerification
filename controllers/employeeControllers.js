@@ -5,6 +5,7 @@ import Kyc from "../models/kycModel.js";
 import BankDetails from "../models/bankDetailsModel.js";
 import Portfolio from "../models/portfolioModel.js";
 import Notification from "../models/notificationModel.js";
+import Withdraw from "../models/withDrawModel.js";
 
 //@DESC => get all info of employee
 //PATH => /employee/profile/:id
@@ -389,19 +390,66 @@ export const delteMessages = AsyncHandler(async (req, res) => {
   }
 });
 
+export const getBankDetails = AsyncHandler(async (req, res) => {
+  const { userId } = req.params;
 
-export const getBankDetails = AsyncHandler(async(req, res)=> {
-    
+  try {
+    const bankDetails = await BankDetails.findOne({ owner: userId });
+    if (bankDetails) {
+      res.status(200).json(bankDetails);
+    } else {
+      throw new Error("no bank details");
+    }
+  } catch (error) {
+    throw new Error(error);
+  }
 });
 
+export const withDrawBalance = AsyncHandler(async (req, res) => {
+  const { userId } = req.params;
 
+  try {
+    const user = await Employee.findOne({ owner: userId });
+    const bankDetails = await BankDetails.findOne({ owner: userId });
 
-export const withDrawBalance = AsyncHandler(async(req, res)=> {
+    if (bankDetails) {
+      if (user.pendingWithDraw > 0) {
+        const withDraw = new Withdraw({
+          owner: userId,
+          amount: user.pendingWithDraw,
+        });
+        user.pendingWithDraw = 0;
 
+        await user.save();
+        await withDraw.save();
+        res.json(user);
+      } else {
+        throw new Error("user not found");
+      }
+    }
+  } catch (error) {
+    throw new Error(error);
+  }
 });
 
+export const getMyWithdrawels = AsyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const pageSize = 3;
+    const page = Number(query || 1);
 
-export const getMyWithdrawels = AsyncHandler(async(req, res)=> {
+    const count = await Withdraw.count({ owner: userId });
+    const withDrawHistory = await Withdraw.find({ owner: userId })
+      .limit(pageSize)
+      .skip(pageSize * (page - 1))
+      .sort({ status: -1 });
 
+    res.json({
+      withDraw: withDrawHistory,
+      page: page,
+      pages: Math.ceil(count / pageSize),
+    });
+  } catch (error) {
+    throw new Error(error);
+  }
 });
-
